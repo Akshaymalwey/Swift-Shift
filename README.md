@@ -1,4 +1,4 @@
-# GazeSwitch 👁️
+# Swift Shift
 
 > **A gaze-controlled macOS utility that automatically switches focus between displays based on where you're looking.**
 
