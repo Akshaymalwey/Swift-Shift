@@ -1,33 +1,61 @@
 # GazeSwitch 👁️
 
-> **A gaze-controlled display switching utility for macOS.**
+> **A gaze-controlled macOS utility that automatically switches focus between displays based on where you're looking.**
 
-GazeSwitch uses computer vision to detect which display you're looking at and automatically shift your active window to that display.
+GazeSwitch is a computer-vision project that aims to remove the friction of switching between a MacBook display and an external monitor.
 
-The goal is simple:
+The idea is simple:
 
-**Look at your MacBook → MacBook becomes active.**
-**Look at your external monitor → external monitor becomes active.**
+**Look at the MacBook → MacBook becomes active.**
+**Look at the external monitor → external monitor becomes active.**
 
-No clicking. No moving the mouse to another screen just to interact with it.
+No clicking. No manually moving the cursor to activate the other display.
 
 ---
 
-## Why?
+# Project Status
 
-When working with a MacBook connected to an external monitor, switching between displays can become surprisingly annoying.
+🚧 **Early Development / Research Prototype**
 
-Normally, you have to:
+The computer-vision pipeline is currently being developed and evaluated.
+
+We have successfully:
+
+* Captured the MacBook camera feed.
+* Detected facial landmarks using MediaPipe.
+* Extracted eye/iris landmarks.
+* Estimated head orientation.
+* Extracted gaze-related features.
+* Collected labeled gaze datasets.
+* Trained an initial gaze classifier.
+* Tested the classifier on a completely unseen recording session.
+* Identified important limitations in the initial feature representation.
+
+The current system is **not yet connected to macOS window switching**.
+
+---
+
+# Motivation
+
+When working with a MacBook connected to an external monitor, switching between the two displays can become repetitive:
 
 1. Move the cursor to the other display.
 2. Click somewhere on it.
 3. Start typing/interacting.
 
-GazeSwitch aims to remove that interaction entirely by using **where you're looking as the intent signal**.
+GazeSwitch attempts to make this automatic.
+
+Instead of using the mouse to communicate:
+
+> "I want to interact with this display."
+
+the user's gaze becomes the signal.
 
 ---
 
-## How It Works
+# Initial Architecture
+
+The original planned architecture is:
 
 ```text
                  MacBook Camera
@@ -56,109 +84,17 @@ GazeSwitch aims to remove that interaction entirely by using **where you're look
          Window      Monitor Window
 ```
 
-The application continuously estimates the user's gaze direction and determines which display they are attending to.
-
----
-
-## Core Features
-
-### 🎯 Gaze-Based Display Switching
-
-Automatically determine whether the user is looking at:
-
-* MacBook display
-* External monitor
-* Neither / uncertain
-
-### 🖥️ Automatic Monitor Detection
-
-GazeSwitch only activates the computer-vision engine when an external monitor is connected.
-
-```text
-Mac starts
-    │
-    ▼
-GazeSwitch running in background
-    │
-    ▼
-External monitor connected?
-    │
- ┌──┴──┐
- NO    YES
- │      │
- ▼      ▼
-Sleep   Start CV
-```
-
-When the monitor is disconnected, camera processing stops automatically.
-
-### ⚡ Fast Switching
-
-Display switching should feel instantaneous enough that the user can simply look at the other screen and start typing.
-
-### 🧠 Calibration
-
-Every desk and camera position is different.
-
-GazeSwitch will therefore support a short calibration process where the user looks at each display so the system can learn their personal gaze geometry.
-
-### 🛡️ Stability / Hysteresis
-
-The system won't switch displays because of a single noisy frame.
-
-A display switch requires the predicted gaze direction to remain stable for a short period.
-
-### ❓ Unknown State
-
-If the system cannot confidently determine where the user is looking, it does nothing.
-
-This prevents accidental switching when:
-
-* Looking away
-* Looking between displays
-* Looking at a phone
-* Face is temporarily lost
-* Lighting conditions are poor
-
-### 🔒 Local Processing
-
-Camera frames are processed locally.
-
-No video or gaze data needs to leave the computer.
-
----
-
-# Architecture
-
-GazeSwitch will use two major components.
-
-```text
-                 GazeSwitch
-                     │
-          ┌──────────┴──────────┐
-          │                     │
-     CV Engine              macOS Layer
-          │                     │
-      Python                 Swift
-          │                     │
-    OpenCV +                AppKit +
-    MediaPipe              Accessibility
-          │                     │
-          └──────────┬──────────┘
-                     │
-                Communication
-```
+The architecture is intentionally divided into two major components.
 
 ### Computer Vision Engine
 
 Responsible for:
 
 * Camera capture
-* Face detection
 * Face landmarks
 * Head-pose estimation
 * Eye/iris tracking
-* Gaze estimation
+* Gaze feature extraction
 * Gaze classification
 * Confidence estimation
 
@@ -167,13 +103,13 @@ Responsible for:
 Responsible for:
 
 * Detecting connected displays
-* Monitoring display configuration changes
+* Monitoring display connection/disconnection
 * Activating windows
-* Moving/restoring cursor position
+* Cursor management
 * Background execution
 * Menu-bar application
 * Launch at login
-* macOS permissions
+* Accessibility permissions
 
 ---
 
@@ -181,242 +117,728 @@ Responsible for:
 
 ## Computer Vision
 
-* Python
+* Python 3.11
 * OpenCV
 * MediaPipe
 * NumPy
 * scikit-learn
+* joblib
 
-## macOS
+## Planned macOS Layer
 
 * Swift
 * AppKit
 * CoreGraphics
 * Accessibility APIs
 
-## Communication
-
-The Python CV engine and native macOS controller will communicate through a lightweight local IPC mechanism.
-
 ---
 
-# Project Structure
-
-The project will eventually look approximately like this:
+# Current Project Structure
 
 ```text
 GazeSwitch/
 │
 ├── README.md
-├── LICENSE
 ├── .gitignore
+├── .python-version
+├── requirements.txt
+│
+├── models/
+│   └── face_landmarker.task
 │
 ├── cv/
-│   ├── camera.py
-│   ├── face_tracker.py
+│   ├── camera_test.py
 │   ├── head_pose.py
+│   ├── eye_landmarks.py
 │   ├── eye_gaze.py
-│   ├── calibration.py
-│   ├── classifier.py
-│   └── main.py
+│   ├── collect_gaze_data.py
+│   ├── analyze_gaze_data.py
+│   ├── find_threshold.py
+│   ├── train_gaze_model.py
+│   ├── evaluate_gaze_model.py
+│   └── compare_datasets.py
 │
-├── macos/
-│   └── GazeSwitch/
-│       ├── App.swift
-│       ├── DisplayManager.swift
-│       ├── WindowManager.swift
-│       ├── GazeController.swift
-│       └── ...
-│
-├── config/
-│   └── calibration.json
+├── data/
+│   ├── gaze_samples.csv
+│   └── gaze_samples_test.csv
 │
 ├── tests/
-│   ├── test_head_pose.py
-│   ├── test_gaze.py
-│   └── test_classifier.py
 │
-└── requirements.txt
+├── macos/
+│
+└── config/
 ```
 
-The exact structure may evolve as the project develops.
+The structure will evolve as the project moves from experimentation toward the actual application.
 
 ---
 
-# Development Roadmap
+# Phase 1 — Environment Setup
 
-## Phase 1 — Camera & Face Tracking
+The project is being developed on an **Apple Silicon M3 Mac**.
 
-* [ ] Set up Python environment
-* [ ] Access MacBook camera
-* [ ] Capture real-time frames
-* [ ] Install MediaPipe
-* [ ] Detect face landmarks
-* [ ] Visualize landmarks
-* [ ] Measure FPS
-
----
-
-## Phase 2 — Head Pose Estimation
-
-* [ ] Extract relevant facial landmarks
-* [ ] Estimate yaw
-* [ ] Estimate pitch
-* [ ] Estimate roll
-* [ ] Visualize head direction
-* [ ] Test stability under different positions
-
----
-
-## Phase 3 — Eye Gaze Estimation
-
-* [ ] Extract eye landmarks
-* [ ] Track iris position
-* [ ] Normalize eye coordinates
-* [ ] Combine eye direction with head pose
-* [ ] Estimate gaze direction
-
----
-
-## Phase 4 — Calibration
-
-Create a calibration system:
+The system architecture was verified as:
 
 ```text
-       Look at MacBook
-
-              ●
-
-       [ Calibrate ]
+arm64
 ```
 
-followed by:
+Python 3.11.9 was selected for the project using `pyenv`.
+
+A project-specific virtual environment was created:
 
 ```text
-       Look at Monitor
-
-              ●
-
-       [ Calibrate ]
+.venv/
 ```
 
-Store the user's gaze characteristics locally.
+Core dependencies were installed:
+
+```text
+opencv-python
+mediapipe
+numpy
+scikit-learn
+joblib
+```
+
+The environment successfully runs the MediaPipe computer-vision pipeline.
 
 ---
 
-## Phase 5 — Gaze Classification
+# Phase 2 — Camera & Face Tracking
 
-Classify gaze into:
+The first milestone was to verify that the MacBook camera could be accessed and processed in real time.
+
+Pipeline:
 
 ```text
+MacBook Camera
+      ↓
+OpenCV
+      ↓
+MediaPipe Face Landmarker
+      ↓
+Facial Landmarks
+```
+
+The MediaPipe Face Landmarker model is stored locally:
+
+```text
+models/face_landmarker.task
+```
+
+The system successfully tracks facial landmarks in real time.
+
+This established the foundation for all subsequent gaze experiments.
+
+---
+
+# Phase 3 — Head Pose Estimation
+
+The next step was estimating the orientation of the user's head.
+
+Relevant quantities:
+
+```text
+Yaw   → horizontal head direction
+Pitch → vertical head direction
+Roll  → head tilt
+```
+
+The initial implementation used facial landmarks and OpenCV's `solvePnP()`.
+
+Conceptually:
+
+```text
+Facial landmarks
+       +
+Approximate 3D face model
+       ↓
+cv2.solvePnP()
+       ↓
+Rotation
+       ↓
+Head orientation
+```
+
+## Initial Experiment
+
+A manual experiment produced approximately:
+
+```text
+Looking at MacBook  → ~0°
+Looking at Monitor  → ~70°
+Extreme Left        → ~80°
+Extreme Right       → ~20°
+```
+
+This suggested that head orientation could provide a strong signal for distinguishing the two displays.
+
+However, subsequent dataset collection revealed that the exact values were dependent on posture and session conditions.
+
+---
+
+# Phase 4 — Eye / Iris Tracking
+
+MediaPipe Face Landmarker also provides detailed eye and iris landmarks.
+
+The project extracts iris landmarks and calculates an eye-relative normalized position.
+
+Conceptually:
+
+```text
+Eye boundaries
+      +
+Iris center
+      ↓
+Normalized iris position
+      ↓
+X / Y gaze features
+```
+
+The normalized coordinates are approximately:
+
+```text
+0.0 → one side
+0.5 → center
+1.0 → opposite side
+```
+
+This prevents raw pixel coordinates from being directly dependent on camera resolution.
+
+---
+
+# Phase 5 — Initial Gaze Dataset
+
+A labeled data collector was created.
+
+The collector records:
+
+```text
+timestamp
+yaw
+pitch
+roll
+
+left_iris_x
+left_iris_y
+
+right_iris_x
+right_iris_y
+
+avg_iris_x
+avg_iris_y
+
+target
+```
+
+The target is one of:
+
+```text
+mac
+monitor
+```
+
+Samples are collected at approximately 10 samples/second.
+
+---
+
+## Dataset 1
+
+The first dataset contained:
+
+```text
+MacBook:  223 samples
+Monitor:  222 samples
+Total:    445 samples
+```
+
+This dataset was used for initial analysis and model development.
+
+---
+
+# Phase 6 — Initial Data Analysis
+
+The first analysis compared the distributions of:
+
+* Head yaw
+* Iris X position
+* Yaw vs. iris X
+
+The results showed that **yaw was the strongest individual feature**.
+
+A simple yaw threshold was tested.
+
+The best threshold found was approximately:
+
+```text
+Yaw threshold ≈ -38°
+```
+
+with:
+
+```text
+Accuracy ≈ 93.26%
+```
+
+This established a useful baseline.
+
+However, 93.26% was not considered sufficient for directly controlling window focus because even occasional incorrect switches would make the system frustrating to use.
+
+---
+
+# Phase 7 — First Machine Learning Model
+
+A Logistic Regression classifier was trained using:
+
+```text
+yaw
+pitch
+roll
+left_iris_x
+left_iris_y
+right_iris_x
+right_iris_y
+```
+
+The model was implemented using a scikit-learn pipeline:
+
+```text
+Feature Scaling
+      ↓
+StandardScaler
+      ↓
+Logistic Regression
+```
+
+On a random 80/20 split of Dataset 1, the model achieved:
+
+```text
+Accuracy: 98.88%
+```
+
+The confusion matrix was:
+
+```text
+                 Predicted
+                 Mac   Monitor
+
+Actual Mac       45      0
+Actual Monitor    1     43
+```
+
+This looked extremely promising.
+
+However, the random split was potentially optimistic because consecutive video frames are highly correlated.
+
+Therefore, a completely separate test session was collected.
+
+---
+
+# Phase 8 — Fresh Dataset Evaluation
+
+A second dataset was collected in a new session.
+
+```text
+MacBook:  237 samples
+Monitor:  251 samples
+Total:    488 samples
+```
+
+The previously trained model was **not retrained** on this dataset.
+
+Instead:
+
+```text
+Dataset 1
+   ↓
+Train model
+   ↓
+Saved model
+   ↓
+Dataset 2
+   ↓
+Evaluate
+```
+
+The result was:
+
+```text
+Accuracy: 63.11%
+```
+
+Confusion matrix:
+
+```text
+                 Predicted
+                 Mac   Monitor
+
+Actual Mac       178     59
+
+Actual Monitor   121    130
+```
+
+This was a major finding.
+
+The initial 98.88% accuracy did **not** generalize to a completely new session.
+
+---
+
+# What We Learned
+
+The 63.11% result revealed that the problem is not simply:
+
+> "We need a more powerful classifier."
+
+Instead, the current features are too dependent on the exact recording conditions.
+
+In particular, the distributions shifted between sessions.
+
+### Average iris X
+
+```text
+              Dataset 1     Dataset 2
+
+MacBook          0.482          0.477
+Monitor          0.549          0.503
+```
+
+The monitor gaze distribution moved substantially closer to the MacBook distribution.
+
+### Yaw
+
+```text
+              Dataset 1     Dataset 2
+
+MacBook        -17.54        -25.77
+Monitor        -41.99        -34.09
+```
+
+The separation between the two targets also became smaller.
+
+This explains why the classifier struggled on the fresh session.
+
+---
+
+# Important Bug Discovered
+
+The collected pitch and roll values showed extremely large and unstable values in some sessions.
+
+For example:
+
+```text
+Dataset 1 Mac pitch mean      ≈ -121°
+Dataset 2 Mac pitch mean      ≈ 12°
+
+Dataset 1 Monitor roll mean   ≈ 100°
+Dataset 2 Monitor roll mean   ≈ 25°
+```
+
+These values are physically suspicious for normal head movement.
+
+This suggests that the current Euler-angle extraction using `cv2.RQDecomp3x3()` needs to be revisited.
+
+Therefore:
+
+> **Pitch and roll should not currently be trusted as stable features.**
+
+The next implementation step is to improve the head-pose calculation and establish a reliable yaw representation.
+
+---
+
+# Current Understanding of the Problem
+
+The project has moved from:
+
+```text
+"Train a classifier to recognize Mac vs Monitor"
+```
+
+toward:
+
+```text
+"Build a personalized gaze/display calibration system"
+```
+
+This is an important architectural change.
+
+A universal model using absolute gaze coordinates may not be sufficiently robust because the measurements depend on:
+
+* Sitting position
+* Head position
+* Camera position
+* Distance from the camera
+* Screen geometry
+* Where on each screen the user is looking
+* Session-to-session variation
+
+---
+
+# Planned Calibration Approach
+
+Instead of assuming fixed global thresholds, GazeSwitch will eventually calibrate itself for the current user and setup.
+
+When an external monitor is detected:
+
+```text
+Monitor Connected
+       ↓
+Start Calibration
+       ↓
+Look at MacBook
+       ↓
+Collect samples
+       ↓
+Look at Monitor
+       ↓
+Collect samples
+       ↓
+Build personalized decision boundary
+```
+
+The calibration can be short, for example:
+
+```text
+MacBook → ~2–3 seconds
+Monitor → ~2–3 seconds
+```
+
+The system can then learn the current relationship between the user's gaze and the two displays.
+
+This should be substantially more robust than relying on a universal hard-coded threshold.
+
+---
+
+# Revised CV Architecture
+
+The current thinking is:
+
+```text
+                 Camera
+                   │
+                   ▼
+          MediaPipe Face Landmarker
+                   │
+          ┌────────┴────────┐
+          ▼                 ▼
+      Head Pose          Eye / Iris
+          │                 │
+          │                 │
+          └────────┬────────┘
+                   ▼
+          Relative Gaze Features
+                   │
+                   ▼
+          Personalized Calibration
+                   │
+                   ▼
+             Gaze Decision
+                   │
+          ┌────────┼────────┐
+          ▼        ▼        ▼
+        MAC     MONITOR   UNKNOWN
+```
+
+Head pose will provide the coarse direction, while eye/iris information can help resolve ambiguous cases.
+
+---
+
+# Stability Requirements
+
+Even a highly accurate classifier should not immediately switch windows on every frame.
+
+The final system will require temporal stability:
+
+```text
+Raw predictions
+       ↓
+Temporal smoothing
+       ↓
+Confidence threshold
+       ↓
+Hysteresis / debounce
+       ↓
+Stable target
+       ↓
+Switch window
+```
+
+For example:
+
+```text
+MONITOR
+MONITOR
+MONITOR
+MONITOR
+MONITOR
+        ↓
+Stable MONITOR
+        ↓
+Activate monitor window
+```
+
+while:
+
+```text
+MONITOR
 MAC
 MONITOR
-UNKNOWN
+MAC
+MONITOR
+        ↓
+Uncertain
+        ↓
+Do nothing
 ```
 
-Initially use geometric rules.
-
-Later experiment with:
-
-* Logistic Regression
-* SVM
-* Random Forest
-* Lightweight neural network
-
-if necessary.
+An `UNKNOWN` state will also be supported.
 
 ---
 
-## Phase 6 — macOS Integration
+# Planned macOS Integration
 
-* [ ] Detect external displays
-* [ ] Detect display connection/disconnection
-* [ ] Activate application windows
-* [ ] Identify windows associated with each display
-* [ ] Restore cursor position
-* [ ] Request Accessibility permissions
+Once the CV system is reliable, the next major component will be native macOS integration.
 
----
+The final application should:
 
-## Phase 7 — Background Application
+### Detect displays
 
-Turn the project into a proper macOS utility:
+```text
+MacBook only
+     ↓
+CV engine sleeping
+```
 
-* [ ] Menu-bar application
-* [ ] Start at login
-* [ ] Automatically enable when monitor connects
-* [ ] Automatically sleep when monitor disconnects
-* [ ] Enable/disable tracking
-* [ ] Calibration interface
-* [ ] Status indicator
+and:
 
----
+```text
+MacBook + External Monitor
+     ↓
+Start gaze tracking
+```
 
-# Design Principles
+### Detect disconnection
 
-### 1. Local First
+```text
+External monitor disconnected
+          ↓
+Stop camera processing
+          ↓
+GazeSwitch remains in background
+```
 
-No cloud processing.
+### Activate windows
 
-### 2. Low Latency
+```text
+Gaze → MacBook
+      ↓
+Activate MacBook window
+```
 
-The user should be able to look at another display and interact with it almost immediately.
+and:
 
-### 3. Stability Over Aggressiveness
+```text
+Gaze → Monitor
+      ↓
+Activate monitor window
+```
 
-It is better to occasionally fail to switch than to constantly switch incorrectly.
+### Background operation
 
-### 4. Minimal CPU Usage
-
-When no external monitor is connected, the CV engine should not continuously process camera frames.
-
-### 5. Hardware Agnostic
-
-The system should work with different external monitors and different desk configurations through calibration rather than hard-coded angles.
-
----
-
-# Future Ideas
-
-Once the basic system works, possible extensions include:
-
-* Multiple external monitors
-* Per-monitor calibration
-* Cursor teleportation
-* Remembering the last active window on each display
-* Gaze-controlled application switching
-* Dwell-based interaction
-* Blink gestures
-* Head gestures
-* Keyboard shortcuts
-* Custom sensitivity
-* Menu-bar controls
-* Visualization/debug mode
-* Automatic calibration assistance
+The eventual application should live as a lightweight macOS menu-bar utility.
 
 ---
 
 # Privacy
 
-GazeSwitch is designed around local processing.
+The project is designed around local processing.
 
 Camera frames should:
 
 * Never be uploaded
+* Never be transmitted
 * Never be stored by default
-* Never be transmitted to a server
 
-The camera is only used while an external display is connected and gaze tracking is active.
+Computer vision should only run while gaze tracking is active.
+
+When no external monitor is connected, the CV engine should sleep to minimize CPU usage.
 
 ---
 
-# Status
+# Development Roadmap
 
-🚧 **Early Development**
+## Completed
 
-Current goal:
+* [x] GitHub repository
+* [x] Python 3.11 environment
+* [x] ARM64/M3 development environment
+* [x] OpenCV setup
+* [x] MediaPipe setup
+* [x] Face Landmarker model
+* [x] Real-time face tracking
+* [x] Head-pose prototype
+* [x] Iris landmark extraction
+* [x] Normalized iris features
+* [x] Labeled gaze data collector
+* [x] Initial dataset collection
+* [x] Initial data visualization
+* [x] Yaw-only baseline
+* [x] Logistic Regression baseline
+* [x] Fresh-session evaluation
+* [x] Identification of session-dependent feature drift
 
-> Build a reliable prototype that can distinguish between looking at the MacBook display and looking at an external monitor.
+## Current
+
+* [ ] Fix and validate head-pose calculation
+* [ ] Establish stable yaw representation
+* [ ] Improve eye-relative gaze representation
+* [ ] Design personalized calibration
+* [ ] Collect post-calibration data
+* [ ] Evaluate cross-session robustness
+* [ ] Implement `MAC / MONITOR / UNKNOWN`
+* [ ] Add temporal smoothing
+* [ ] Add confidence threshold
+* [ ] Add hysteresis/debounce
+
+## Future
+
+* [ ] macOS display detection
+* [ ] Automatic CV activation when monitor connects
+* [ ] Automatic CV shutdown when monitor disconnects
+* [ ] macOS window activation
+* [ ] Cursor position restoration
+* [ ] Swift menu-bar application
+* [ ] Launch at login
+* [ ] Accessibility permissions
+* [ ] Multiple external monitor support
+* [ ] Per-monitor calibration
+* [ ] Configuration interface
+
+---
+
+# Current Experimental Results
+
+| Experiment                          |     Result |
+| ----------------------------------- | ---------: |
+| Yaw-only threshold                  | **93.26%** |
+| Logistic Regression — random split  | **98.88%** |
+| Logistic Regression — fresh session | **63.11%** |
+
+The large gap between random-split and fresh-session performance is currently the most important result in the project.
+
+It demonstrates that **cross-session robustness is the primary computer-vision challenge** before integrating the system with macOS.
+
+---
+
+# Current Goal
+
+The immediate goal is **not** to connect the classifier to window switching.
+
+The immediate goal is:
+
+> **Build a gaze representation that remains reliable when the user's posture and recording session change.**
+
+Only after that is solved will the project move to automatic macOS display and window control.
 
 ---
 
