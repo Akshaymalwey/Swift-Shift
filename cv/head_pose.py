@@ -104,15 +104,14 @@ def calculate_head_pose(face_landmarks, frame_width, frame_height):
         rotation_vector
     )
 
-    angles, _, _, _, _, _ = cv2.RQDecomp3x3(
-        rotation_matrix
+    yaw = np.degrees(
+        np.arctan2(
+            rotation_matrix[1,0],
+            rotation_matrix[0,0],
+        )
     )
 
-    pitch = angles[0]
-    yaw = angles[1]
-    roll = angles[2]
-
-    return pitch, yaw, roll
+    return yaw
 
 
 def main():
@@ -181,17 +180,7 @@ def main():
 
                 if pose is not None:
 
-                    pitch, yaw, roll = pose
-
-                    cv2.putText(
-                        frame,
-                        f"Pitch: {pitch:.2f}",
-                        (20, 40),
-                        cv2.FONT_HERSHEY_SIMPLEX,
-                        0.7,
-                        (0, 255, 0),
-                        2,
-                    )
+                    yaw = pose
 
                     cv2.putText(
                         frame,
@@ -203,15 +192,6 @@ def main():
                         2,
                     )
 
-                    cv2.putText(
-                        frame,
-                        f"Roll:  {roll:.2f}",
-                        (20, 100),
-                        cv2.FONT_HERSHEY_SIMPLEX,
-                        0.7,
-                        (0, 255, 0),
-                        2,
-                    )
 
             cv2.imshow(
                 "GazeSwitch - Head Pose",
