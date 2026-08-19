@@ -86,3 +86,32 @@ Not trying to connect anything to window switching yet. The only goal at this st
 ## License
 
 TBD
+
+### Work Done So Far:
+
+* Defined the idea: use the MacBook camera to detect whether I'm looking at the MacBook or external monitor.
+* Set up the project on an M3 Apple Silicon Mac using Python 3.11.9, `pyenv`, and a virtual environment.
+* Set up OpenCV + MediaPipe Face Landmarker for real-time facial landmark detection.
+* Extracted eye and iris landmarks and converted them into normalized eye-position features.
+* Implemented head-pose estimation using facial landmarks + `solvePnP()`.
+* Built a labeled data collector for MacBook vs Monitor gaze samples.
+* Collected an initial dataset of 445 samples.
+* Found a simple yaw threshold that achieved 93.26% accuracy.
+* Trained a Logistic Regression model using head-pose + iris features.
+* Achieved 98.88% accuracy on a random train/test split.
+* Tested the model on a completely new session — accuracy dropped to 63.11%.
+* Compared the datasets and identified significant cross-session feature drift.
+* Realized that raw gaze features aren't robust enough and that personalized calibration may be necessary.
+* Observed that facial asymmetry changes when looking toward the external monitor because one side of the face becomes partially occluded.
+* Built a facial-geometry experiment measuring:
+  * Eye ratio
+  * Face ratio
+  * Jaw ratio
+  * Forehead ratio
+* Found strong separation in normal conditions, e.g. Face Ratio ~1.0 for MacBook vs ~4.2 for Monitor.
+* Tested the feature under different distances and head movements.
+* Realized that facial geometry is primarily a head-orientation signal rather than a direct display classifier.
+* Started combining the two ideas: head orientation + iris/eye direction.
+* Built a combined live feature visualizer showing Face Ratio, Yaw, and Iris X.
+* Paused further data collection to research existing gaze-tracking and computer-vision approaches before deciding on the final architecture.
+* macOS integration has not started yet — automatic display detection, focus switching, background execution, and menu-bar app are still ahead.
